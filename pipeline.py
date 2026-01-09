@@ -4,12 +4,12 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 from scipy.signal import savgol_filter
-import streamlit as st
+from pathlib import Path
+import os
 
-
-# Make sure the shapefile is located in the correct path
-shapefile_pad = "meetpunt_locaties/NDW_AVG_Meetlocaties_Shapefile"
-telpunten_gdf = gpd.read_file(shapefile_pad + "/Telpunten_WGS84.shp")
+BASE_DIR = Path(__file__).resolve().parent
+shapefile_pad = BASE_DIR / "meetpunt_locaties" / "NDW_AVG_Meetlocaties_Shapefile"
+telpunten_gdf = gpd.read_file(str(shapefile_pad / "Telpunten_WGS84.shp"))
 
 
 
@@ -324,7 +324,7 @@ pipeline = Pipeline(steps=[
     ("select lanes", lane_selector)
 ])
 
-@st.cache_data
+
 def prepare_data(data):
     return pipeline.fit_transform(data)
 
