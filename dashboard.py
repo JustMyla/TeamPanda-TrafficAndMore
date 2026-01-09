@@ -355,6 +355,8 @@ if df.empty:
 
 if 'show_predictions' not in st.session_state:
     st.session_state.show_predictions = False
+    
+st.write("de Toon ML voorspellingen functionaliteit is conceptueel en de voorspellingen zijn niet bruikbaar in de praktijk.")
 
 # Toon alleen knop als voorspellingen verborgen zijn
 if not st.session_state.show_predictions:
