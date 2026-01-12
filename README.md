@@ -15,7 +15,7 @@ Dit project biedt een visueel dashboard waarmee je verkeersintensiteit kunt anal
 - **Realtime Kleurcodering**: Groen (normaal) → Oranje (kans op file) → Rood (ernstige file)
 - **Historische Data Matching**: Als een datum niet beschikbaar is, zoekt het systeem automatisch een vergelijkbare dag een jaar eerder
 
-- ⚠️ **ML Voorspellingen (WIP)**: Omslagpunt detectie (experimenteel, nog niet accuraat)
+- ⚠️ **ML Voorspellingen (WIP)**: Omslagpunt detectie (experimenteel, nog niet accuraat, voor toekomstig gebruik)
 
 
 ## Project Structuur
