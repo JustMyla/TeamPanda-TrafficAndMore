@@ -119,17 +119,21 @@ def handle_csv_upload():
 
 def get_coords(locatie_id, data):
     """
-    gets coördanites for given location
+    Gets coördinates of given locaties. Returns None if no geo data.
     """
+    if "geometry" not in data.columns:
+        return None
+
     try:
-        # get geo string
-        geom = str(data.loc[data["id_meetlocatie"] == locatie_id, "geometry"].iloc[0])
-        
-        # Split into seperate cords
+        row = data.loc[data["id_meetlocatie"] == locatie_id]
+        if row.empty or pd.isna(row["geometry"].iloc[0]):
+            return None
+            
+        geom = str(row["geometry"].iloc[0])
         parts = geom.replace("POINT", "").replace("(", "").replace(")", "").split()
         return [float(parts[1]), float(parts[0])]
-    except:
-        return [52.011, 4.711] # Gouda Fallback
+    except Exception:
+        return None
 
 
 # Title
@@ -219,51 +223,71 @@ col_map, col_viz, col_legend = st.columns([1.2, 1.2, 0.5])
 with col_map:
     st.write("**Locatie**")
     
-    # initialize starting position and locations
-    m = folium.Map(location=geselecteerde_cords, zoom_start=14)
-    all_points = [geselecteerde_cords] 
+    # Get coördinates
+    geselecteerde_cords = get_coords(geselecteerde_locatie, df_prepared)
     
-    folium.Marker(
-        location=geselecteerde_cords,
-        popup=geselecteerde_locatie,
-        icon=folium.Icon(color=icon_color, icon='car', prefix='fa')
-    ).add_to(m)
-    
-    unique_locs = df_prepared[['id_meetlocatie', 'geometry']].drop_duplicates()
-    for _, row in unique_locs.iterrows():
-        loc_id = row['id_meetlocatie']
-        other_lat_lon = get_coords(loc_id, df_prepared)
-        all_points.append(other_lat_lon) 
+    # Check if there are coördinates
+    if geselecteerde_cords is not None:
+        # Initialize map with all valid data
+        m = folium.Map(location=geselecteerde_cords, zoom_start=14)
+        all_points = [geselecteerde_cords] 
         
-        if loc_id != geselecteerde_locatie:
-            folium.CircleMarker(
-                location=other_lat_lon,
-                radius=8,
-                color='blue',
-                fill=True,
-                tooltip=loc_id
-            ).add_to(m)
-
-    m.fit_bounds(all_points)
-
-    # Initialize map zoom
-    map_output = st_folium(
-        m, 
-        width="100%", 
-        height=400, 
-        key="verkeers_kaart_vast",
-        returned_objects=["last_object_clicked_tooltip"]
-    )
-
-
-    # click on map
-    if map_output and map_output.get("last_object_clicked_tooltip"):
-        geklikte_locatie = map_output["last_object_clicked_tooltip"]
+        folium.Marker(
+            location=geselecteerde_cords,
+            popup=f"Geselecteerd: {geselecteerde_locatie}",
+            icon=folium.Icon(color=icon_color, icon='car', prefix='fa')
+        ).add_to(m)
         
-        # rerun if location has been clicked
-        if geklikte_locatie != st.session_state.geselecteerde_locatie:
-            st.session_state.geselecteerde_locatie = geklikte_locatie
-            st.rerun()
+        # Add NoN selected locations
+        if "geometry" in df_prepared.columns:
+            unique_locs = df_prepared[['id_meetlocatie', 'geometry']].drop_duplicates()
+            for _, row in unique_locs.iterrows():
+                loc_id = row['id_meetlocatie']
+                if loc_id != geselecteerde_locatie:
+                    other_lat_lon = get_coords(loc_id, df_prepared)
+                    if other_lat_lon:
+                        all_points.append(other_lat_lon) 
+                        folium.CircleMarker(
+                            location=other_lat_lon,
+                            radius=8,
+                            color='blue',
+                            fill=True,
+                            tooltip=loc_id
+                        ).add_to(m)
+            m.fit_bounds(all_points)
+
+        # Render map
+        map_output = st_folium(
+            m, 
+            width="100%", 
+            height=400, 
+            key="verkeers_kaart_vast",
+            returned_objects=["last_object_clicked_tooltip"]
+        )
+
+        # Click selector
+        if map_output and map_output.get("last_object_clicked_tooltip"):
+            geklikte_locatie = map_output["last_object_clicked_tooltip"]
+            if geklikte_locatie != st.session_state.geselecteerde_locatie:
+                st.session_state.geselecteerde_locatie = geklikte_locatie
+                st.rerun()
+    else:
+        # If no shapefile, map not loaded
+        st.info(f"📍 **Locatie op de kaart niet gevonden**")
+        st.warning(f"""
+            **Status van de weergave:**
+            De verkeerskundige data voor meetpunt **{geselecteerde_locatie}** is succesvol geladen, 
+            maar de bijbehorende geografische coördinaten zijn niet beschikbaar. 
+            
+            **Mogelijke oorzaak:**
+            De koppeling met het bronbestand voor meetlocaties (`Telpunten_WGS84.shp`) kon niet 
+            worden gelegd. Controleer of dit bestand geheel aanwezig is in de map:
+            `meetpunt_locaties/NDW_AVG_Meetlocaties_Shapefile/`
+            
+            **Gevolg:**
+            De grafieken en voorspellingsmodellen hiernaast zijn volledig operationeel en 
+            gebaseerd op de brongegevens en zijn dus nog bruikbaar, de visuele weergave op de kaart is tijdelijk uitgeschakeld.
+        """)
 
 # Visualisation on intensity
 with col_viz:

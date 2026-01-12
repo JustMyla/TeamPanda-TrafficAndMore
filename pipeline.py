@@ -7,10 +7,21 @@ from scipy.signal import savgol_filter
 from pathlib import Path
 import os
 
+# look up path
 BASE_DIR = Path(__file__).resolve().parent
 shapefile_pad = BASE_DIR / "meetpunt_locaties" / "NDW_AVG_Meetlocaties_Shapefile"
-telpunten_gdf = gpd.read_file(str(shapefile_pad / "Telpunten_WGS84.shp"))
+shapefile_file = shapefile_pad / "Telpunten_WGS84.shp"
 
+# Initialize at none
+telpunten_gdf = None
+
+if shapefile_file.exists():
+    try:
+        telpunten_gdf = gpd.read_file(str(shapefile_file))
+    except Exception as e:
+        print(f"Fout bij het laden van shapefile: {e}")
+else:
+    print(f"Waarschuwing: Shapefile niet gevonden op {shapefile_file}. De 'merge_with_geo' stap zal worden overgeslagen.")
 
 
 def drop_columns(X):
@@ -83,6 +94,11 @@ def dayofweek(X):
 
 
 def merge_with_geo(X):
+    # no merge if there's no geodata
+    if telpunten_gdf is None:
+        print("Slaan merge_with_geo over: telpunten_gdf is niet beschikbaar.")
+        return X
+    
     # prepare for merge
     geo_info = telpunten_gdf[['dgl_loc', 'wegtype', 'geometry']].copy()
     geo_info.rename(columns={'dgl_loc': 'id_meetlocatie'}, inplace=True)
